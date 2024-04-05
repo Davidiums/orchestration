@@ -1,0 +1,100 @@
+version: '3.1'
+
+networks:
+  mynetwork:
+    driver: bridge
+
+
+
+services:
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    restart: on-failure
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: orchestrationdb
+      MYSQL_USER: orchestrationuser
+      MYSQL_PASSWORD: orchestrationpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - mynetwork
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: mariadb
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "8081:80"
+    depends_on:
+      - mariadb
+    networks:
+      - mynetwork
+
+#  nginx-proxy-manager-app:
+#    image: 'jc21/nginx-proxy-manager:latest'
+#    restart: unless-stopped
+#    ports:
+#      - '80:80' # Public HTTP Port
+#      - '443:443' # Public HTTPS Port
+#      - '81:81' # Admin Web Port
+#    environment:
+#      DB_MYSQL_HOST: nginx-proxy-manager-db
+#      DB_MYSQL_PORT: 3306
+#      DB_MYSQL_USER: nginxuser
+#      DB_MYSQL_PASSWORD: nginxpassword
+#      DB_MYSQL_NAME: nginxproxymanager
+#    volumes:
+#      - ./data:/data
+#      - ./letsencrypt:/etc/letsencrypt
+#      - ./orchestration.conf:/etc/nginx/conf.d/orchestration.conf
+#    depends_on:
+#      - nginx-proxy-manager-db
+#    networks:
+#      - mynetwork
+
+#  nginx-proxy-manager-db:
+#    image: 'jc21/mariadb-aria:latest'
+#    restart: unless-stopped
+#    environment:
+#      MYSQL_ROOT_PASSWORD: rootpassword
+#      MYSQL_DATABASE: nginxproxymanager
+#      MYSQL_USER: nginxuser
+#      MYSQL_PASSWORD: nginxpassword
+#      MARIADB_AUTO_UPGRADE: '1'
+#    volumes:
+#      - ./mysql:/var/lib/mysql
+#    networks:
+#      - mynetwork
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: on-failure
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./orchestration-nginx.conf:/etc/nginx/orchestration-nginx.conf
+    networks:
+      - mynetwork
+
+
+  mon-application:
+    image: orchestration:1.0.0
+    ports:
+      - "8080:8080"
+    networks:
+      - mynetwork
+    depends_on:
+      - mariadb
+
+volumes:
+  mariadb_data:
